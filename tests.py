@@ -1,5 +1,7 @@
 import numpy as np
-from group import Group, OpEnum, OpGen, DirectProduct, SemiDirectProduct, SE2, GroupElement
+from convenience import OpEnum, OpGen
+from group import Group, DirectProduct, SemiDirectProduct, SE2, GroupElement
+from repgroup import RepGroup, RepGroupElement
 
 if __name__ == '__main__':
     # test 1 affine addition
@@ -69,14 +71,24 @@ if __name__ == '__main__':
     # part 1 SE2
     se2 = SE2()
     # test figure 1.29
-    g = se2.element([2, 1, np.pi/2])
-    h = se2.element([0, -1, -np.pi/4])
+    g = se2.element([2., 1.,  np.pi/2])
+    h = se2.element([0., -1.,  -np.pi/4])
     gh_l = g.left_action(h).value
     gh_r = h.right_action(g).value
-    assert np.isclose(se2.xytheta(gh_l), np.array([3., 1., np.pi/4])).all()
-    assert np.isclose(se2.xytheta(gh_r), np.array([3., 1., np.pi/4])).all()
+    assert np.isclose(gh_l, np.array([3., 1., np.pi/4])).all()
+    assert np.isclose(gh_r, np.array([3., 1., np.pi/4])).all()
     # non commutivity
     hg_l = h.left_action(g).value
     hg_r = g.right_action(h).value
-    assert np.isclose(se2.xytheta(hg_r), se2.xytheta(hg_l)).all()
-    assert not np.isclose(se2.xytheta(hg_l), np.array([3., 1., np.pi/4])).all()
+    assert np.isclose(hg_r, hg_l).all()
+    assert not np.isclose(hg_l, np.array([3., 1., np.pi/4])).all()
+
+    # representation test 1 affine addition
+    aff = OpGen(OpEnum.AFFINE_ADD, {'dim': 2})
+    op = RepGroup(aff.representation, aff.derepresentation, np.eye(3), params={'dim': 2})
+    g1 = op.element(np.array([1, 2]))
+    g2 = op.element(np.array([3, 4]))
+    assert np.isclose(g1.left_action(g2).value, op.element(np.array([4, 6])).value).all()
+    assert np.isclose(g1.right_action(g2).value, op.element(np.array([4, 6])).value).all()
+    
+   
