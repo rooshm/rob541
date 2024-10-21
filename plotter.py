@@ -20,3 +20,34 @@ def square_plt():
     ax.plot([0, 0], [-1.5, 3], 'k')
     ax.plot([-1.5, 3], [0, 0], 'k')
     return ax
+
+def plot_vector_field(configs, values_list, title = 'Vector Field', padding = 1):
+    fig, ax = plt.subplots(layout='constrained')
+    ax.set_aspect('equal')
+    x_configs = configs[:, 0]
+    y_configs = configs[:, 1]
+    # draw axes to ensure full arrow is visible
+    max_config_x = np.max(x_configs)
+    min_config_x = np.min(x_configs)
+    max_config_y = np.max(y_configs)
+    min_config_y = np.min(y_configs)
+    x_width = len(np.unique(x_configs))
+    y_width = len(np.unique(y_configs))
+    if len(x_configs) > 1 and len(y_configs) > 1:
+        x_spacing = (max_config_x - min_config_x) / x_width
+        y_spacing = (max_config_y - min_config_y) / y_width
+    else:
+        x_spacing = padding
+        y_spacing = padding
+    ax.plot([0, 0], [min(min_config_y - y_spacing, 0), max_config_y + y_spacing], '--k', alpha=0.2)
+    ax.plot([min(min_config_x - x_spacing, 0), max_config_x + x_spacing], [0, 0], '--k', alpha=0.2)
+    # plot vector field
+    colors = ['red', 'black', 'blue', 'green', 'purple']
+    for i, (values, color_str) in enumerate(zip(values_list, colors[:len(values_list)])):
+        q_artist = ax.quiver(x_configs, y_configs, 
+                values[:, 0], values[:, 1], 
+                angles='xy', scale_units='xy', scale = 3.0 * 1 / max(x_spacing, y_spacing), width = 0.004, color=color_str)
+        ax.quiverkey(q_artist, 1.0 + (x_spacing / x_width), 1.0 - (y_spacing / y_width) * (i + 1), 1., label=f'Vector {i + 1}', labelpos='E', coordinates='axes')
+    ax.set_title(title)
+    fig.get_layout_engine().set(w_pad=x_spacing, h_pad=y_spacing, hspace=0, wspace=0)
+    # fig.savefig(f'{title}.png')

@@ -48,7 +48,9 @@ class RepGroupElement(GroupElement):
     @property
     def derepresentation(self):
         return self.group.derepresentation_fn(self.value)
-
+    
+    def __repr__(self):
+        return f"RepGroupElement(value={self.derepresentation}, group={self.group})"
 class SE2(RepGroup):
     def __init__(self):
         super().__init__(SE2.se2_repr, SE2.se2_derepr, np.eye(3))
@@ -63,6 +65,23 @@ class SE2(RepGroup):
     @staticmethod
     def se2_derepr(mat):
         return np.array([mat[0, 2], mat[1, 2], np.arctan2(mat[1, 0], mat[0, 0])]).reshape(3)
+    
+    def __repr__(self) -> str:
+        return "SE2"
 
+class SemiDirectProduct(RepGroup):
+    def __init__(self):
+        super().__init__(SemiDirectProduct.sd_repr, SemiDirectProduct.sd_derepr, np.eye(2))
 
-  
+    @staticmethod
+    def sd_repr(value):
+        x, y = value
+        return np.array([[x, y],
+                         [0, 1]])
+    
+    @staticmethod
+    def sd_derepr(mat):
+        return np.array([mat[0, 0], mat[0, 1]])
+    
+    def __repr__(self):
+        return "SemiDirectProduct"
