@@ -40,7 +40,8 @@ def matrix_derivative(func, config):
     jacobian_matrix = jacobian(config)
     og = func(config)
     size = og.shape
-    # print(f"jacobian_matrix: {jacobian_matrix}")
+
+    # print(f"jacobian_matrix: {jacobian_matrix} size: {size}")
     return MatrixVectorBases(vectors=jacobian_matrix, size=size)
 
 class RepresentationGroup(rgp.RepresentationGroup):
@@ -104,7 +105,7 @@ class RepGroupTangentVector(GroupTangentVector):
         return self.group.velocity_derep(self.config, self.value).reshape(self.config.value.shape)
     
     def __repr__(self) -> str:
-        return f'RepGroupTangentVector value {self.value} and configuration {self.config}'
+        return f'RepGroupTangentVector value {self.derep()} and configuration {self.config}'
     
 class RepresentationGroupElement(rgp.RepresentationGroupElement):
     def __init__(self, group, representation, initial_chart=0):
@@ -148,3 +149,35 @@ def scale_shift_normalization(g_rep):
     return g_rep_normalized
 
 RxRplus = RepresentationGroup(scale_shift_rep, [1, 0], scale_shift_derep, 0, scale_shift_normalization)
+
+def SE2_rep(g_value):
+    x = g_value[0]
+    y = g_value[1]
+    theta = g_value[2]
+
+    g_rep = [[np.cos(theta), -np.sin(theta), x],
+             [np.sin(theta), np.cos(theta), y],
+             [0, 0, 1]]
+
+    return g_rep
+
+
+def SE2_derep(g_rep):
+    x = g_rep[0][2]
+    y = g_rep[1][2]
+    theta = np.arctan2(g_rep[1][0], g_rep[0][0])
+
+    g_value = [x, y, theta]
+    return g_value
+
+def SE2_normalize(g_rep):
+
+    R = g_rep[0:2, 0:2]
+
+    R_normalized = (1.5 * R) - (0.5 * np.matmul(np.matmul(R, np.transpose(R)), R))
+
+    g_rep_normalized = np.concatenate([np.concatenate([R_normalized, g_rep[[0, 1], 2:]], 1), [[0, 0, 1]]])
+
+    return(g_rep_normalized)
+
+SE2 = RepresentationGroup(SE2_rep, [0, 0, 0], SE2_derep, 0, SE2_normalize)

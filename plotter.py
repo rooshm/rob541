@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from S300_Construct_SE2 import RigidBody
+from S300_Construct_SE2 import cornered_triangle
+from geomotion import plottingfunctions as gplt
 
 def add_marker(ax, loc, label, random_color=False):
     x, y, theta = loc
@@ -12,13 +15,26 @@ def add_marker(ax, loc, label, random_color=False):
     ax.arrow(x, y, 0.1 * np.cos(theta), 0.1 * np.sin(theta), head_width=0.1, head_length=0.13, fc=color, ec=color)
     ax.text(x , y - 0.3, label, fontsize=12)
 
-def square_plt():
-    fig, ax = plt.subplots()
+def add_velocity(ax, loc, vel, label = None, random_color=False):
+    x, y, theta = loc
+    x2, y2, theta2 = vel
+    if random_color == True:
+        cmap = plt.get_cmap('viridis')
+        color = cmap(np.random.rand())
+    else:
+        color = 'black'
+
+    ax.arrow(x, y, 0.5 * x2, 0.5 * y2, head_width=0.1, head_length=0.13, fc=color, ec=color, length_includes_head=True)
+    ax.text(x , y - 0.3, label, fontsize=12)
+
+def square_plt(a = -1.5, b = 3, title = 'Square Plot'):
+    fig, ax = plt.subplots(layout='constrained') 
     ax.set_aspect('equal')
     fig.set_size_inches(6, 6)
     ax.grid(True)
-    ax.plot([0, 0], [-1.5, 3], 'k')
-    ax.plot([-1.5, 3], [0, 0], 'k')
+    ax.plot([0, 0], [a, b], 'k')
+    ax.plot([a, b], [0, 0], 'k')
+    ax.set_title(title)
     return ax
 
 def plot_vector_field(configs, values_list, title = 'Vector Field', padding = 1, color_idx = 0):
@@ -52,3 +68,11 @@ def plot_vector_field(configs, values_list, title = 'Vector Field', padding = 1,
     ax.set_title(title)
     fig.get_layout_engine().set(w_pad=x_spacing, h_pad=y_spacing, hspace=0, wspace=0)
     # fig.savefig(f'{title}.png')
+
+def plot_bodies(ax, tvs, color='red'):
+    spot_color = gplt.crimson
+    for i, tv in enumerate(tvs):
+        body = RigidBody(cornered_triangle(.25, spot_color), tv.config)
+        body.draw(ax)
+        add_velocity(ax, tv.config, tv.derep())
+
