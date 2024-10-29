@@ -130,13 +130,13 @@ class LieGroup(RepGroup):
     #     v = TgLh(gval) @ gdotatq.value
     #     return GroupTangentVector(h.L(q), v)
     
-    def eval_left_lifted_action(self, g: RepGroupElement, h_config: RepGroupElement, h_dot):
+    def eval_left_lifted_action(self, g: RepGroupElement, h_config: RepGroupElement, h_dot: RepGroupElement):
         # ThLg @ h_dot
-        return TangentVector(config = g.left_action(h_config), value = self.left_lifted_action(g, h_config) @ h_dot)
+        return TangentVector(config = g.left_action(h_config), value = self.left_lifted_action(g, h_config) @ h_dot.derepresentation)
 
     def eval_right_lifted_action(self, h: RepGroupElement, g_config: RepGroupElement, h_dot: RepGroupElement):
         # TgRh @ h_dot
-        return TangentVector(config = h.right_action(g_config), value = self.right_lifted_action(h, g_config) @ h_dot)
+        return TangentVector(config = h.right_action(g_config), value = self.right_lifted_action(h, g_config) @ h_dot.derepresentation)
 
     def __repr__(self) -> str:
         return "Lie Group"
