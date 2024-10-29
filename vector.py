@@ -1,4 +1,5 @@
 import numpy as np
+import numdifftools as ndt
 from repgroup import RepGroup, RepGroupElement
 
 class TangentVector(object):
@@ -34,6 +35,7 @@ class TangentVector(object):
         raise ValueError('Only scalar multiplication supported for left multiplication')
 
 class VectorBases(object):
+    """ List of tangent vectors with convenience functions"""
     def __init__(self, vectors: list, inverse = None) -> None:
         self.vectors = vectors
         self.inverse = inverse
@@ -52,25 +54,3 @@ class VectorBases(object):
 
     def __mul__(self, other):
         raise NotImplementedError
-
-class GroupTangentVector(object):
-    def __init__(self, val: RepGroupElement, config: RepGroupElement) -> None:
-        self.config = config
-        self.group = self.config.group
-        self.value = val
-    
-    def as_tv(self):
-        return TangentVector(value=self.value.derepresentation, config=self.config.derepresentation)
-
-    def __repr__(self) -> str:
-        return f'GroupTangentVector(value: {self.value}, config: {self.config}, group: {self.group})'
-    
-    def __add__(self, other):
-        raise NotImplementedError('Prefer left and right composition')
-
-    def __mul__(self, other):
-        raise NotImplementedError('Prefer left and right composition')
-    
-    def __rmul__(self, other):
-        raise NotImplementedError('Prefer left and right composition')
-

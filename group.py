@@ -31,6 +31,9 @@ class GroupElement(object):
     def AD_inv(self, e):
         return self.inverted_element.left_action(e).left_action(self)
 
+    def __eq__(self, e):
+        return np.isclose(self.value, e.value).all()
+
 class Group(object):
     def __init__(self, operation, inverse, identity, params={}):
         self.identity = identity

@@ -23,9 +23,10 @@ def square_plt():
 
 def plot_vector_field(configs, values_list, title = 'Vector Field', padding = 1):
     fig, ax = plt.subplots(layout='constrained')
+    ax.set_box_aspect(1)
     ax.set_aspect('equal')
-    x_configs = configs[:, 0]
-    y_configs = configs[:, 1]
+    x_configs = configs[0, :]
+    y_configs = configs[1, :]
     # draw axes to ensure full arrow is visible
     max_config_x = np.max(x_configs)
     min_config_x = np.min(x_configs)
@@ -45,7 +46,7 @@ def plot_vector_field(configs, values_list, title = 'Vector Field', padding = 1)
     colors = ['red', 'black', 'blue', 'green', 'purple']
     for i, (values, color_str) in enumerate(zip(values_list, colors[:len(values_list)])):
         q_artist = ax.quiver(x_configs, y_configs, 
-                values[:, 0], values[:, 1], 
+                values[0, :], values[1, :], 
                 angles='xy', scale_units='xy', scale = 3.0 * 1 / max(x_spacing, y_spacing), width = 0.004, color=color_str)
         ax.quiverkey(q_artist, 1.0 + (x_spacing / x_width), 1.0 - (y_spacing / y_width) * (i + 1), 1., label=f'Vector {i + 1}', labelpos='E', coordinates='axes')
     ax.set_title(title)
