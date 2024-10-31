@@ -63,6 +63,7 @@ class ManifoldElement(core.GeomotionElement):
             self.manifold = manifold_element_input.manifold
             self.current_chart = manifold_element_input.current_chart
 
+        # If the first argument is not a manifold element, use the full set of provided inputs
         else:
             # Save the provided manifold, configuration, and initial chart as class instance attributes
             self.manifold = manifold
@@ -78,6 +79,7 @@ class ManifoldElement(core.GeomotionElement):
 
     def format_value(self, val):
 
+        # Make sure the value is an ndarray
         val = ut.ensure_ndarray(val)
 
         # Check element shape
@@ -86,6 +88,7 @@ class ManifoldElement(core.GeomotionElement):
         else:
             raise Exception("Provided value does not match element shape for manifold")
 
+        # return the formatted and verified value
         return val
 
     def transition(self, new_chart):
@@ -110,6 +113,8 @@ class ManifoldElement(core.GeomotionElement):
 
             new_value = self.manifold.transition_table[self.current_chart][new_chart](self.value)
 
+        # Return an object of the same class with the new value and new chart
+        # (calling self.__class__ ensures compatibility with subclasses of ManifoldElement)
         return self.__class__(self.manifold, new_value, new_chart)
 
 
@@ -140,7 +145,7 @@ class ManifoldElementSet(core.GeomotionSet):
         # Check if the first argument is a bare manifold element, and if so, wrap its value in a list
         elif isinstance(manifold, ManifoldElement):
             manifold_element_input = manifold
-            value = [manifold_element_input]
+            value = ut.ensure_list(manifold_element_input)
             manifold = manifold_element_input.manifold
 
         # Check if the first argument is a list-of-lists of Elements of the specified type, and if so, use it directly
@@ -242,27 +247,60 @@ class ManifoldFunction:
 
     def __init__(self,
                  manifold: Manifold,
-                 defining_function,  # Underlying numeric function
-                 defining_chart=0,  # Chart on which the underlying function is defined
+                 defining_function_list,  # Underlying numeric function
                  postprocess_function=None):  # How to format the output of the numeric function
 
-        """Defining function and defining chart can be supplied as either a single function and the chart
-        on which it is defined, or as a tuple of functions and a corresponding tuple of charts on which those
-        functions are defined. Where the charts overlap, the functions should agree with each other."""
+        """defining function_list is a list of functions defining the function on the corresponding charts.
+        Where the charts overlap, the functions should agree with each other. If the function is not explicitly defined
+        on a chart, the corresponding element of defining_function_list should be None, and an attempt will be made to
+        construct the function on the chart via a pullback operation."""
 
-        if not isinstance(defining_function, list):
-            defining_function = [defining_function]
+        if not isinstance(defining_function_list, list):
+            defining_function_list = ut.ensure_list(defining_function_list)
 
-        if not isinstance(defining_chart, list):
-            defining_chart = [defining_chart]
+        if not len(defining_function_list) == manifold.n_charts:
+            raise Exception("Defining function list does not match the number of charts on the manifold")
 
-        if not ut.shape(defining_function) == ut.shape(defining_chart):
-            raise Exception("Defining function list and defining chart list do not have matching shapes")
+        # Attempt to pull back function onto charts for which it was not provided, by finding the lowest-numbered chart
+        # with a defined transition map, and pulling back through that map. If no single-transition path is found,
+        # provide a function that returns NaN
+        for i, d in enumerate(defining_function_list):
 
-        # Save all of the inputs as instance properties
+            # If the function is not defined on the chart
+            if d is None:
+
+                # reset the counter for iterating through the charts
+                j = 0
+                transition_found = False
+
+                # Check to see if a transition has been found
+                while not transition_found:
+
+                    # If no transition has been found, and there is a transition to chart
+                    # j in which the function is defined
+                    if (manifold.transition_table[i][j] is not None) and (defining_function_list[j] is not None):
+
+                        # Mark the transition as having been found
+                        transition_found = True
+
+                        # Pull back the function through the transition map
+                        defining_function_list[i] = core.PullbackFunction(defining_function_list[j],
+                                                                          manifold.transition_table[i][j])
+
+                    # If we've checked all the transitions and did not find one that
+                    # takes us to a chart in which the function is defined, then define a NaN-valued function
+                    elif j == manifold.n_charts - 1:
+                        defining_function_list[i] = lambda x: np.NaN
+                        transition_found = True
+
+                    # If we haven't checked all the transitions, increment the count and check the next one
+                    else:
+                        j = j + 1
+
+
+        # Save the inputs as instance properties
         self.manifold = manifold
-        self.defining_function = defining_function
-        self.defining_chart = defining_chart
+        self.defining_function_list = defining_function_list
         self.postprocess_function = postprocess_function
 
     def __call__(self, configuration, *args, **kwargs):
@@ -296,41 +334,11 @@ class ManifoldFunction:
         # Put the input into ManifoldElementSet form (no change is made if it is already a set)
         configuration_set = ManifoldElementSet(configuration)
 
-        # Get every point into a chart for which the function is defined
-        def send_to_feasible_chart(q, function_index_to_try=0):
-
-            # If the point is in a chart over which the function has been defined, leave it in that
-            if q.current_chart in self.defining_chart:
-                q_chart = q.current_chart
-                function_index = self.defining_chart.index(q_chart)
-                return q, function_index
-
-            # Sequentially check if the point can be pushed into the underlying chart of one of the
-            # underlying functions
-            elif self.manifold.transition_table[q.current_chart][
-                self.defining_chart[function_index_to_try]] is not None:
-                function_index = function_index_to_try
-                q_chart = self.defining_chart[function_index_to_try]
-                return (q.transition(q_chart),
-                        function_index)
-
-            # Increase the function index for the next try
-            elif function_index_to_try + 1 < len(self.manifold.transition_table):
-                return send_to_feasible_chart(q, function_index_to_try + 1)
-
-            # If we run out of functions to check, give the user an error
-            else:
-                raise Exception("Point is not in a chart where the function is defined, "
-                                "and does not have a transition to a chart in which the function is defined")
-                # Two-step transitions are not checked yet; this is also where boundaries of charts could be checked
-
-        configuration_list, function_index_list = (
-            ut.object_list_eval_two_outputs(send_to_feasible_chart, configuration_set))
-
-        configuration_set = ManifoldElementSet(configuration_list)
-
-        # Extract a component-wise grid from the ManifoldElementSet and evert it to element-wise
+        # Extract a component-wise grid from the ManifoldElementSet and evert it to element-wise formatting
         configuration_grid_e = configuration_set.grid.everse
+
+        # Extract the current chart from each element
+        function_index_list = ut.object_list_eval(lambda x: x.current_chart, configuration_set)
 
         # Make function_index_list a grid_array
         function_index_list = ut.GridArray([function_index_list], n_outer=1).everse
@@ -342,9 +350,9 @@ class ManifoldFunction:
         configurations, and return an element-wise grid of numeric values"""
 
         def defining_function_with_inputs(config, function_index):
-            return self.defining_function[function_index[0]](config, *process_args, **kwargs)
+            return self.defining_function_list[function_index[0]](config, *process_args, **kwargs)
 
-        # Evaluate the defining function over the grid in the specified chart
+        # Evaluate the defining function over the grid in the chart for which each point is defined
         function_grid_e = ut.GridArray(ut.array_eval_pairwise(defining_function_with_inputs, configuration_grid_e,
                                                               function_index_list, configuration_grid_e.n_outer),
                                        configuration_grid_e.n_outer)
@@ -381,23 +389,22 @@ class ManifoldMap(ManifoldFunction):
     def __init__(self,
                  manifold: Manifold,  # The manifold that input elements are part of
                  output_manifold: Manifold,  # The manifold that output elements are part of
-                 defining_function,  # The underlying numeric function
-                 defining_chart=None,  # The input-manifold chart in which the function domain is defined
+                 defining_function_list,  # The underlying numeric function
                  output_defining_chart=None,  # The output-manifold chart in which the function range is defined
                  output_chart=None):  # An output chart to use, if different from the definition chart
 
-        if not isinstance(defining_function, list):
-            defining_function = [defining_function]
+        if not isinstance(defining_function_list, list):
+            defining_function_list = [defining_function_list]
 
-        if defining_chart is None:
-            defining_chart = [0] * len(defining_function)
-        elif not isinstance(defining_chart, list):
-            defining_chart = [defining_chart]
+        # if defining_chart is None:
+        #     defining_chart = [0] * len(defining_function_list)
+        # elif not isinstance(defining_chart, list):
+        #     defining_chart = [defining_chart]
 
         if output_defining_chart is None:
-            output_defining_chart = [0] * len(defining_function)
+            output_defining_chart = [0] * len(defining_function_list)
         elif not isinstance(output_defining_chart, list):
-            output_defining_chart = [output_defining_chart]
+            output_defining_chart = ut.ensure_list(output_defining_chart)
 
         # If a separate output chart is not specified, match it to the output defining chart
         if output_chart is None:
@@ -406,11 +413,9 @@ class ManifoldMap(ManifoldFunction):
             if not isinstance(output_chart, list):
                 output_chart = [output_chart]
 
-        if not ut.shape(defining_function) == ut.shape(defining_chart):
-            raise Exception("Defining function list and defining chart list do not have matching shapes")
-        elif not ut.shape(defining_function) == ut.shape(output_defining_chart):
+        if not ut.shape(defining_function_list) == ut.shape(output_defining_chart):
             raise Exception("Defining function list and output defining chart list do not have matching shapes")
-        elif not ut.shape(defining_function) == ut.shape(output_chart):
+        elif not ut.shape(defining_function_list) == ut.shape(output_chart):
             raise Exception("Defining function list and output chart list do not have matching shapes")
 
         # Turn the numerical output of the defining function into manifold elements or
@@ -438,8 +443,7 @@ class ManifoldMap(ManifoldFunction):
 
         # Initialize the standard pieces of a ManifoldFunction
         super().__init__(manifold,
-                         defining_function,
-                         defining_chart,
+                         defining_function_list,
                          postprocess_function)
 
         # Store the extra information associated with having manifold output
@@ -450,7 +454,7 @@ class ManifoldMap(ManifoldFunction):
     def transition_output(self, new_output_chart):
         return self.__class__(self.manifold,
                               self.output_manifold,
-                              self.defining_function,
+                              self.defining_function_list,
                               self.defining_chart,
                               self.output_defining_chart,
                               new_output_chart)

@@ -1,12 +1,12 @@
-from geomotion import representationliegroup as rlgp, plottingfunctions as gplt
+import os
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.append(parent_dir)
+from geomotion import representationliegroup as rlgp
 from geomotion import group as gp
 from geomotion import utilityfunctions as ut
 import numpy as np
 from matplotlib import pyplot as plt
-from operator import methodcaller
-
-spot_color = gplt.crimson
-
 
 
 def SE2_rep(g_value):
@@ -49,26 +49,12 @@ class RigidBodyPlotInfo:
 
         if 'plot_locus' in kwargs:
             self.plot_locus = kwargs['plot_locus']
-        else:
-            self.plot_locus = None
 
         if 'plot_style' in kwargs:
             self.plot_style = kwargs['plot_style']
-        else:
-            self.plot_style = None
-
-        if 'plot_function' in kwargs:
-            self.plot_function = kwargs['plot_function']
-        else:
-            self.plot_function = ['fill']
-
-        if 'plot_geometry' in kwargs:
-            self.plot_geometry = kwargs['plot_geometry']
-        else:
-            self.plot_geometry = None
 
 
-def cornered_triangle(configuration, r, spot_color, **kwargs):
+def cornered_triangle(r, spot_color, **kwargs):
 
     def T1(body):
         return SE2.element_set(ut.GridArray([[r, 0, 0],
@@ -76,8 +62,8 @@ def cornered_triangle(configuration, r, spot_color, **kwargs):
                                        [r * np.cos(4 * np.pi / 3), r * np.sin(4 * np.pi / 3), 0]], 1),
                          0, "element")
 
-    def T2(body):
-        return SE2.element_set(ut.GridArray([[r, 0, 0],
+    def T2(*args, **kwargs):
+           return SE2.element_set(ut.GridArray([[r, 0, 0],
                                        [r / 3 * np.cos(2 * np.pi / 3) + (2 * r / 3), r / 3 * np.sin(2 * np.pi / 3), 0],
                                        [r / 3 * np.cos(4 * np.pi / 3) + (2 * r / 3), r / 3 * np.sin(4 * np.pi / 3), 0]],
                                       1),
@@ -90,7 +76,7 @@ def cornered_triangle(configuration, r, spot_color, **kwargs):
 
     plot_info = RigidBodyPlotInfo(plot_locus=plot_locus, plot_style=plot_style)
 
-    return RigidBody(plot_info, configuration)
+    return plot_info
 
 
 class RigidBody:
@@ -105,21 +91,11 @@ class RigidBody:
              axis):
         plot_locus = self.plot_info.plot_locus
         plot_options = self.plot_info.plot_style
-        plot_function = self.plot_info.plot_function
 
         for i, p in enumerate(plot_locus):
             # Transform the locally expressed positions of the drawing points by the position of the body
-            plot_locus_global = self.position * p(self)
-            plot_locus_global_grid = plot_locus_global.grid
+            plot_points_global = self.position * p(self)
+            plot_points_global_grid = plot_points_global.grid
 
-            if plot_function[i] == 'fill':
-                axis.fill(*plot_locus_global_grid[:2], **(plot_options[i]))
-            elif plot_function[i] == 'plot':
-                axis.plot(*plot_locus_global_grid[:2], **(plot_options[i]))
-            elif plot_function[i] == 'scatter':
-                axis.scatter(*plot_locus_global_grid[:2], **(plot_options[i]))
-            else:
-                raise Exception("Unknown plot_function specification")
+            axis.fill(plot_points_global_grid[0], plot_points_global_grid[1], 'black', **(plot_options[i]))
             #print(plot_points_global_grid[0], "\n", plot_points_global_grid[1])
-
-        return

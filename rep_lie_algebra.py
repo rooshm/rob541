@@ -1,6 +1,9 @@
-import numpy as np
+import os
 import sys
-sys.path.append('../')
+curr_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(curr_dir)
+
+import numpy as np
 import geomotion.representationgroup as rgp
 from vector import VectorBases
 import numdifftools as ndt

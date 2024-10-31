@@ -1,6 +1,8 @@
+import os
 import sys
-sys.path.append('../')
-from rep_lie_algebra import SE2
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.append(parent_dir)
+from S300_Construct_SE2 import SE2
 from S300_Construct_SE2 import RigidBody
 from S300_Construct_SE2 import cornered_triangle
 from geomotion import plottingfunctions as gplt

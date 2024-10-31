@@ -1,9 +1,46 @@
+import os
 import sys
-sys.path.append('../')
-from rep_lie_algebra import SE2
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.append(parent_dir)
+from geomotion import representationgroup as rgp
 from geomotion import group as gp
 from geomotion import utilityfunctions as ut
 import numpy as np
+from matplotlib import pyplot as plt
+
+
+def SE2_rep(g_value):
+    x = g_value[0]
+    y = g_value[1]
+    theta = g_value[2]
+
+    g_rep = [[np.cos(theta), -np.sin(theta), x],
+             [np.sin(theta), np.cos(theta), y],
+             [0, 0, 1]]
+
+    return g_rep
+
+
+def SE2_derep(g_rep):
+    x = g_rep[0][2]
+    y = g_rep[1][2]
+    theta = np.arctan2(g_rep[1][0], g_rep[0][0])
+
+    g_value = [x, y, theta]
+    return g_value
+
+def SE2_normalize(g_rep):
+
+    R = g_rep[0:2, 0:2]
+
+    R_normalized = (1.5 * R) - (0.5 * np.matmul(np.matmul(R, np.transpose(R)), R))
+
+    g_rep_normalized = np.concatenate([np.concatenate([R_normalized, g_rep[[0, 1], 2:]], 1), [[0, 0, 1]]])
+
+    return(g_rep_normalized)
+
+SE2 = rgp.RepresentationGroup(SE2_rep, [0, 0, 0], SE2_derep, 0, SE2_normalize)
+
 
 class RigidBodyPlotInfo:
 

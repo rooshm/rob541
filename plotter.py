@@ -1,7 +1,11 @@
+import os
+import sys
+curr_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(curr_dir)
+
 import matplotlib.pyplot as plt
 import numpy as np
-from S300_Construct_SE2 import RigidBody
-from S300_Construct_SE2 import cornered_triangle
+from Chapter_1_Examples.S300_Construct_SE2 import RigidBody, cornered_triangle
 from geomotion import plottingfunctions as gplt
 
 def add_marker(ax, loc, label, random_color=False):

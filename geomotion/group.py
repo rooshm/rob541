@@ -98,14 +98,14 @@ class GroupElement(md.ManifoldElement):
     def L(self):
         return md.ManifoldMap(self.group,
                               self.group,
-                              [lambda x: f(self.value, x) for f in self.group.operation_list],
+                              [lambda x, func=f: func(self.value, x) for f in self.group.operation_list],
                               list(range(len(self.group.operation_list))))
 
     @property
     def R(self):
         return md.ManifoldMap(self.group,
                               self.group,
-                              [lambda x: f(x, self.value) for f in self.group.operation_list],
+                              [lambda x, func=f: func(x, self.value) for f in self.group.operation_list],
                               list(range(len(self.group.operation_list))))
 
     def AD(self, other):

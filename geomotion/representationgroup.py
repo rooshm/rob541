@@ -17,23 +17,31 @@ class RepresentationGroup(gp.Group):
         # Regularize representation function list, wrapping it in list if provided as raw
         # function
         representation_function_list = ut.ensure_list(representation_function_list)
-        representation_function_list = [lambda x: ut.ensure_ndarray(rho(x)) for rho in representation_function_list]
+        representation_function_list = [lambda x, func=rho: ut.ensure_ndarray(func(x)) for rho in representation_function_list]
+
 
         # If a derepresentation list has been provided, use it to construct the transition map as the composition of
         # the rep and derep functions
         if derepresentation_function_list is not None:
 
+            # Wrap a bare derepresentation function into a list
             derepresentation_function_list = ut.ensure_list(derepresentation_function_list)
 
+            # Make sure that the representation and derepresentation functions are the same size
             if len(derepresentation_function_list) == len(representation_function_list):
 
-                derepresentation_function_list = ut.ensure_list(derepresentation_function_list)
+                # Make sure that the derepresentation function list outputs ndarray values
+                derepresentation_function_list = [lambda x, func=rho: ut.ensure_ndarray(func(x)) for rho in derepresentation_function_list]
 
-                derepresentation_function_list = [lambda x: ut.ensure_ndarray(rho(x)) for rho in derepresentation_function_list]
-
+                # Build the transition table by combining the ith representation function with the jth
+                # derepresentation function
                 transition_table = [
-                    [lambda x: derepresentation_function_list[j](derepresentation_function_list[i](x)) for j in range(2)] for
-                    i in range(len(derepresentation_function_list))]
+                    [lambda x, dfunc=derepresentation_function_list[j], rfunc=representation_function_list[i]:
+                     dfunc(rfunc(x))
+                     for j in range(len(derepresentation_function_list))]
+                    for i in range(len(representation_function_list))
+                ]
+
             else:
                 raise Exception("derepresentation function list does not have the same dimension as representation "
                                 "function list")
