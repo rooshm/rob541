@@ -902,7 +902,7 @@ class TangentVectorField(md.ManifoldFunction):
             q_history = ut.GridArray(sol.y, 1).everse
             q_final = q_history[-1]
             if output_format == 'TangentVector':
-                q_final = self.manifold.element(q_final, self.defining_chart)
+                q_final = self.manifold.element(q_final, initial_config_chart)
 
             return q_final
 
